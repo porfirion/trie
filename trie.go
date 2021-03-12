@@ -4,27 +4,37 @@ import (
 	"fmt"
 )
 
+// If you Add already existing prefix again - Trie tries to compare values.
+// At first it check if values implement Equaler interface. If so and Equal returns true - it's ok.
+// If not - values are compared with default == operation. If they are the same - it's ok.
+// If they are not the same or values not comparable (func for example) - it panics.
 type Equaler interface {
 	Equal(v interface{}) bool
 }
 
 // Sparse radix trie. Create it just as &Trie{} and add required data.
 // Also there are some convenience constructors (for example for one line initialization)
-// Makes zero allocation on Get and Scan operations and one allocation per Add
+// Makes zero allocation on Get and SearchIn operations and one allocation per Add
 type Trie struct {
 	Prefix   []byte
 	Value    interface{}
 	Children *[256]*Trie
 }
 
+// Convenience method for Add()
+func (t *Trie) AddString(prefix string, value interface{}) {
+	t.Add([]byte(prefix), value)
+}
+
 // Add adds new entry into trie with specified prefix
 //
-// WARNING! nil shouldn't be stored as value: you wouldn't be able to find it nor by Scan, nor by Get, nor by Iterate
+// WARNING! nil shouldn't be stored as value: you wouldn't be able to find it nor by SearchIn, nor by Get, nor by Iterate
 // If you don't need any value (you need only prefixes) - you can use struct{}{}. See checker.FromStrings
 //
 // WARNING! Add will panic when called with already existing prefix and different value
-// For such situations (when the same value is added twice and it's not comparable by default operator (==))
-// you can implement Equaler, that checks if it is the same value and no panic needed.
+// For such situations (when the same value is added twice and it's not comparable by default operator (==),
+// for example for functions) you can implement Equaler, that checks if it is the same value and no panic needed.
+// But if Equal returns false and values are not comparable - it will panic
 func (t *Trie) Add(newPrefix []byte, val interface{}) {
 	//fmt.Printf("Adding %X (%v)\n", newPrefix, val)
 	if len(newPrefix) == 0 {
@@ -54,12 +64,10 @@ func (t *Trie) Add(newPrefix []byte, val interface{}) {
 			if t.Value == nil {
 				// just setting new value
 				t.Value = val
-			} else if t.Value != val {
-				if eq, ok := t.Value.(Equaler); ok && eq.Equal(val) {
-					// it's ok. It's the same
-				} else {
-					panic(fmt.Errorf("there is already another value:\n\t%s\n\t%s", t.Value, val))
-				}
+			} else if eq, ok := t.Value.(Equaler); ok && eq.Equal(val) || t.Value == val {
+				// it's ok. It's the same
+			} else {
+				panic(fmt.Errorf("there is already another value:\n\t%s\n\t%s", t.Value, val))
 			}
 		} else {
 			// len(newPrefix) > ind - newPrefix longer than existing

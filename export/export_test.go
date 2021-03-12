@@ -35,7 +35,7 @@ func ExampleExport() {
 }
 
 func ExampleExport_withDifferentTypes() {
-	exampleTypes := trie.FromMap(map[string]interface{}{
+	exampleTypes := trie.BuildFromMap(map[string]interface{}{
 		"float":       31.7,
 		"float.round": 32.0,
 		"int":         16,

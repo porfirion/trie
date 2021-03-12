@@ -1,7 +1,6 @@
 package trie
 
 import (
-	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -20,9 +19,9 @@ func TestTrie_Add(t *testing.T) {
 		{[]byte{0xF0, 0x9F, 0x91}, "short"},          // add the same
 	}
 
-	trie := &Trie{}
+	tr := &Trie{}
 	for _, tt := range tests {
-		trie.Add(tt.prefix, tt.val)
+		tr.Add(tt.prefix, tt.val)
 	}
 
 	var expected = &Trie{[]byte{0xF0, 0x9F, 0x91}, "short", &[256]*Trie{
@@ -33,9 +32,24 @@ func TestTrie_Add(t *testing.T) {
 			}},
 		}},
 	}}
-	if !reflect.DeepEqual(trie, expected) {
-		t.Fatalf("Not equal:\nexpected\n%s\ngot\n%s\n", expected, trie)
+	if !reflect.DeepEqual(tr, expected) {
+		t.Fatalf("Not equal:\nexpected\n%s\ngot\n%s\n", expected, tr)
 	}
+}
+
+type EqFunc func()
+
+func (f EqFunc) Equal(v interface{}) bool {
+	return true
+}
+
+var _ Equaler = EqFunc(nil)
+
+// it's ok to add funcs if they implement Equaler
+func TestTrie_AddFuncTwice(t *testing.T) {
+	tr := &Trie{}
+	tr.AddString("foo", EqFunc(func() {}))
+	tr.AddString("foo", EqFunc(func() {}))
 }
 
 func BenchmarkTrie_Add(b *testing.B) {
@@ -43,57 +57,23 @@ func BenchmarkTrie_Add(b *testing.B) {
 
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	randomString := func() []byte {
-		var b = make([]byte, rand.Intn(10)+10)
+		var b = make([]byte, 32)
 		for i := range b {
 			b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
 		}
-		return b[:]
+		return b
 	}
 
 	tr := &Trie{}
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		// do not count random string allocations
-		str := randomString()
-		b.StartTimer()
-		tr.Add(str, struct{}{})
+		// one allocation for random string generation
+		tr.Add(randomString(), struct{}{})
+
+		// This variant shows only 1 allocation,
+		// but stopping and starting timer is very slow - benchmark can last for 30 seconds!
+		//b.StopTimer()
+		//str := randomString()
+		//b.StartTimer()
+		//tr.Add(str, struct{}{})
 	}
-}
-
-func ExampleTrie_String() {
-	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: "short", Children: &[256]*T{
-		0x10: {Prefix: []byte{0x10}, Value: "modified"},
-		0xA8: {Prefix: []byte{0xA8}, Value: "nokey", Children: &[256]*T{
-			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: "withsep", Children: &[256]*T{
-				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: "withkey"},
-			}},
-		}},
-	}}
-	fmt.Println(example)
-	// Output:
-	// [F0 9F 91] short
-	// ├─10─ [10] modified
-	// ├─A8─ [A8] nokey
-	// │     ├─E2─ [E2 80 8D] withsep
-	// │     │     ├─F0─ [F0 9F 94 A7] withkey
-}
-
-func ExampleTrie_Iterate() {
-	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: "short", Children: &[256]*T{
-		0x10: {Prefix: []byte{0x10}, Value: "modified"},
-		0xA8: {Prefix: []byte{0xA8}, Value: "nokey", Children: &[256]*T{
-			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: "withsep", Children: &[256]*T{
-				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: "withkey"},
-			}},
-		}},
-	}}
-	example.Iterate(func(prefix []byte, value interface{}) {
-		fmt.Printf("[%v] %+v\n", prefix, value)
-	})
-	// Output:
-	// [[240 159 145]] short
-	// [[240 159 145 16]] modified
-	// [[240 159 145 168]] nokey
-	// [[240 159 145 168 226 128 141]] withsep
-	// [[240 159 145 168 226 128 141 240 159 148 167]] withkey
 }

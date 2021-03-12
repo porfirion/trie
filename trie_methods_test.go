@@ -58,7 +58,7 @@ func TestTrie_Scan(t *testing.T) {
 	var found = make([]interface{}, 0)
 	var ind = 0
 	for ind < len(str) {
-		_, size, ok := tr.Scan([]byte(str[ind:]))
+		_, size, ok := tr.SearchIn([]byte(str[ind:]))
 		if ok {
 			if ind+size > len(str) {
 				t.Fatalf("index out of bounds: %d", ind+size)
@@ -135,7 +135,7 @@ func BenchmarkTrie_Get(b *testing.B) {
 func BenchmarkTrie_Scan(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_, _, ok := tr.Scan([]byte("👨‍❤️‍💋‍👨"))
+		_, _, ok := tr.SearchIn([]byte("👨‍❤️‍💋‍👨"))
 		if !ok {
 			b.Fail()
 		}

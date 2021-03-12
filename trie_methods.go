@@ -2,13 +2,23 @@ package trie
 
 import "fmt"
 
-func (t *Trie) ScanString(str string) (value interface{}, prefixLen int, ok bool) {
-	return t.Scan([]byte(str))
+func (t *Trie) SearchPrefix(str string) (prefix string, ok bool) {
+	_, length, ok := t.SearchInString(str)
+	if ok {
+		return str[:length], true
+	}
+
+	return "", false
 }
 
-// Scan searches the longest matching key (prefix) in input bytes.
-// If input contains any key as prefix - return associated value, prefix length, true
-func (t *Trie) Scan(input []byte) (value interface{}, prefixLen int, ok bool) {
+func (t *Trie) SearchInString(str string) (value interface{}, prefixLen int, ok bool) {
+	return t.SearchIn([]byte(str))
+}
+
+// SearchIn searches the longest matching key (prefix) in input bytes.
+// If input contains has prefix matching any stored key
+// return associated value, prefix length, true OR nil, 0, false otherwise
+func (t *Trie) SearchIn(input []byte) (value interface{}, prefixLen int, ok bool) {
 	ind := 0
 	for ind < len(t.Prefix) && ind < len(input) && t.Prefix[ind] == input[ind] {
 		ind++
@@ -21,7 +31,7 @@ func (t *Trie) Scan(input []byte) (value interface{}, prefixLen int, ok bool) {
 
 	if ind < len(input) && t.Children != nil && t.Children[input[ind]] != nil {
 		// continue matching children with next bytes from input. Greedy!
-		value, prefixLen, ok = t.Children[input[ind]].Scan(input[ind:])
+		value, prefixLen, ok = t.Children[input[ind]].SearchIn(input[ind:])
 	}
 
 	if ok {
@@ -83,7 +93,7 @@ func (t *Trie) SplitKeysOnly(str string) (res []string, err error) {
 		bts = []byte(str)
 	)
 	for ind < len(str) {
-		_, size, ok := t.Scan(bts[ind:])
+		_, size, ok := t.SearchIn(bts[ind:])
 		if !ok {
 			return res, fmt.Errorf("not a key: %s", str[ind:])
 		}
