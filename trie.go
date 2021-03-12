@@ -10,7 +10,7 @@ type Equaler interface {
 
 // Sparse radix trie. Create it just as &Trie{} and add required data.
 // Also there are some convenience constructors (for example for one line initialization)
-// Makes zero allocation on Get and Scan operations
+// Makes zero allocation on Get and Scan operations and one allocation per Add
 type Trie struct {
 	Prefix   []byte
 	Value    interface{}

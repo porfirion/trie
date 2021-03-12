@@ -40,9 +40,10 @@ func TestTrie_Add(t *testing.T) {
 
 func BenchmarkTrie_Add(b *testing.B) {
 	b.ReportAllocs()
+
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	randomString := func() []byte {
-		var b [24]byte
+		var b = make([]byte, rand.Intn(10)+10)
 		for i := range b {
 			b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
 		}
@@ -51,7 +52,11 @@ func BenchmarkTrie_Add(b *testing.B) {
 
 	tr := &Trie{}
 	for i := 0; i < b.N; i++ {
-		tr.Add(randomString(), struct{}{})
+		b.StopTimer()
+		// do not count random string allocations
+		str := randomString()
+		b.StartTimer()
+		tr.Add(str, struct{}{})
 	}
 }
 
