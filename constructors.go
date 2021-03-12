@@ -1,21 +1,21 @@
 package trie
 
-// Because []byte can't be map key we only can have strings as index
-func BuildFromMap(inputs map[string]interface{}) *Trie {
+func BuildFromMap(inputs map[string]ValueType) *Trie {
 	t := &Trie{}
 	for key, value := range inputs {
-		t.Add([]byte(key), value)
+		t.Put([]byte(key), value)
 	}
 	return t
 }
 
+// []byte can't be map key. So we can use list of structs
 func BuildFromList(inputs []struct {
 	Key   []byte
-	Value interface{}
+	Value ValueType
 }) *Trie {
 	t := &Trie{}
 	for i := range inputs {
-		t.Add(inputs[i].Key, inputs[i].Value)
+		t.Put(inputs[i].Key, inputs[i].Value)
 	}
 	return t
 }
@@ -25,7 +25,7 @@ func BuildPrefixesOnly(strs ...string) *Trie {
 	t := &Trie{}
 
 	for i := range strs {
-		t.Add([]byte(strs[i]), struct{}{})
+		t.Put([]byte(strs[i]), struct{}{})
 	}
 
 	return t

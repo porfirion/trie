@@ -40,17 +40,28 @@ func ExampleExport_withDifferentTypes() {
 		"float.round": 32.0,
 		"int":         16,
 		"bool":        true,
+		"uint":        uint(15),
+		"uint64":      uint64(21),
+		"uint32":      uint32(20),
+		"bytes":       [...]byte{},
 	})
 	var res = Export(exampleTypes, ExportSettings{Padding: "    "})
 
 	fmt.Print(res)
 	// Output:
 	// {Children: &[256]*Trie{
-	//     0x62: {Prefix: []byte{0x62, 0x6F, 0x6F, 0x6C}, Value: true},
+	//     0x62: {Prefix: []byte{0x62}, Children: &[256]*Trie{
+	//         0x6F: {Prefix: []byte{0x6F, 0x6F, 0x6C}, Value: true},
+	//         0x79: {Prefix: []byte{0x79, 0x74, 0x65, 0x73}, Value: [0]uint8{}},
+	//     }},
 	//     0x66: {Prefix: []byte{0x66, 0x6C, 0x6F, 0x61, 0x74}, Value: 31.7, Children: &[256]*Trie{
 	//         0x2E: {Prefix: []byte{0x2E, 0x72, 0x6F, 0x75, 0x6E, 0x64}, Value: 32},
 	//     }},
 	//     0x69: {Prefix: []byte{0x69, 0x6E, 0x74}, Value: 16},
+	//     0x75: {Prefix: []byte{0x75, 0x69, 0x6E, 0x74}, Value: 15, Children: &[256]*Trie{
+	//         0x33: {Prefix: []byte{0x33, 0x32}, Value: 20},
+	//         0x36: {Prefix: []byte{0x36, 0x34}, Value: 21},
+	//     }},
 	// }}
 }
 

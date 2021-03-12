@@ -7,7 +7,7 @@ func ExampleBuildPrefixesOnly() {
 
 	var myString = "large_banana"
 
-	if prefix, ok := prefixes.SearchPrefix(myString); ok {
+	if prefix, ok := prefixes.TakePrefix(myString); ok {
 		fmt.Printf("prefix \"%s\" found\n", prefix)
 	} else {
 		fmt.Println("no prefix found")
@@ -54,49 +54,6 @@ func ExampleTrie_Iterate() {
 	// [[240 159 145 168 226 128 141 240 159 148 167]] withkey
 }
 
-func ExampleTrie_SearchPrefix() {
-	tr := BuildPrefixesOnly(
-		"red",
-		"blue",
-		"green",
-		"yellow",
-	)
-	inputs := []string{
-		"green_apple",
-		"yellow_banana",
-		"red_strawberry",
-		"blue_whale",
-		"noprefixnocolor",
-	}
-	for _, inp := range inputs {
-		format := "%s"
-
-		prefix, ok := tr.SearchPrefix(inp)
-		if ok {
-			inp = inp[len(prefix)+1:]
-
-			switch prefix {
-			case "red":
-				format = "\033[1;31m%s\033[0m"
-			case "green":
-				format = "\033[1;32m%s\033[0m"
-			case "blue":
-				format = "\033[1;36m%s\033[0m"
-			case "yellow":
-				format = "\033[1;33m%s\033[0m"
-			}
-		}
-
-		fmt.Printf(format+"\n", inp)
-	}
-	// Output:
-	// [1;32mapple[0m
-	// [1;33mbanana[0m
-	// [1;31mstrawberry[0m
-	// [1;36mwhale[0m
-	// noprefixnocolor
-}
-
 func ExampleTrie_SearchInString() {
 	tr := BuildFromMap(map[string]interface{}{
 		"red":    "\033[1;31m%s\033[0m",
@@ -114,7 +71,7 @@ func ExampleTrie_SearchInString() {
 	for _, inp := range inputs {
 		format := "%s"
 
-		if raw, prefixLen, ok := tr.SearchInString(inp); ok {
+		if raw, prefixLen, ok := tr.LongestPrefixOfString(inp); ok {
 			format = raw.(string)
 			inp = inp[prefixLen+1:]
 		}

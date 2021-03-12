@@ -5,8 +5,8 @@
 //
 // Trie is created by
 //   t := &Trie{}
-//   t.Add("foo", "bar")
-//   t.Add("buzz", 123)
+//   t.Put("foo", "bar")
+//   t.Put("buzz", 123)
 // or by convenience constructors:
 //   t := BuildFromMap(map[string]interface{}{
 //     "foo": "bar",
@@ -19,7 +19,7 @@
 //  })
 // Two common operations are:
 //   value, ok := t.Get(key) // returns associated value
-//   value, prefixLen, ok := t.SearchIn(input) // searches the longest prefix of input, that stored in trie
+//   value, prefixLen, ok := t.LongestPrefixOf(input) // searches the longest prefix of input, that stored in trie
 // but also handy method
-//   prefix, ok := t.SearchPrefix(input) // returns longest prefix without associated value
+//   prefix, ok := t.TakePrefix(input) // returns longest prefix without associated value
 package trie

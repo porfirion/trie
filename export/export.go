@@ -121,7 +121,7 @@ func exportValue(v interface{}) string {
 	case bool:
 		return strconv.FormatBool(val)
 	default:
-		return fmt.Sprintf(`"%+v"`, v)
+		return fmt.Sprintf(`%#v`, v)
 	}
 }
 
@@ -140,5 +140,4 @@ func encodeBytes(bts []byte) string {
 		}
 	}
 	return b.String()
-
 }
