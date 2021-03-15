@@ -14,7 +14,7 @@ type ValueType = interface{}
 
 // Sparse radix trie. Create it just as &Trie{} and add required data.
 // Also there are some convenience constructors (for example for one line initialization)
-// Makes zero allocation on Get and LongestPrefixOf operations and two allocations per Put
+// Makes zero allocation on Get and SearchPrefixIn operations and two allocations per Put
 //
 // type Trie[type ValueType] struct {...}
 type Trie struct {
@@ -28,20 +28,18 @@ func (t *Trie) PutString(prefix string, value ValueType) {
 	t.Put([]byte(prefix), value)
 }
 
-// Put adds new entry into trie or replaces existing with specified prefix. Prefix can have zero length - associated value would be added into root Trie
+// Put adds new entry into trie or replaces existing with specified prefix.
+// Prefix can have zero length - associated value would be added into root Trie
 //
-// WARNING! nil shouldn't be stored as value: you wouldn't be able to find it nor by LongestPrefixOf, nor by Get, nor by Iterate
-// If you don't need any value (you need only prefixes) - you can use struct{}{}. See checker.FromStrings
+// WARNING! nil shouldn't be stored as value: you wouldn't be able to find it nor by SearchPrefixIn, nor by Get, nor by Iterate
+// If you don't need any value (you need only prefixes) - you can use struct{}{}. See TakePrefix
 //
-// There was some variants of control of replace. Handle it inplace results in dependency on ValueType
-// (interfaces and pointers are handled differently). Also there are some incomparable types, that cause panic :(.
+// There were some variants of control of replace. Handling it in place results in dependency on ValueType
+// (interfaces and pointers are handled differently). Also there are some incomparable types, that cause panic when compared :(.
 // Store separate function like OnReplaceCallback - requires passing it to children. And if you update it in parent -
-// it wouldn't be updated in children automatically. Another problem - we can't know whole prefix of value, since
-// we don't know our parent!
+// it wouldn't be updated in children automatically. Another problem - node doesn't know it's whole prefix, since
+// it doesn't know it's parent!
 // With current realization caller of Put knows whole prefix and we shouldn't collect it inside. IMHO, much easier.
-//
-// Also previously there was check for non zero prefix length. But what to do if it is? Panic? return error?
-// Seems to me the best approach is to generalize Trie for storing zero length prefix too.
 func (t *Trie) Put(newPrefix []byte, val ValueType) (oldValue ValueType) {
 	var curPrefix = t.Prefix
 	var ind int
@@ -120,54 +118,6 @@ func (t *Trie) getChildOrCreate(ind byte) *Trie {
 	return t.Children[ind]
 }
 
-func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
-	_, length, ok := t.LongestPrefixOfString(str)
-	if ok {
-		return str[:length], true
-	}
-
-	return "", false
-}
-
-func (t *Trie) LongestPrefixOfString(str string) (value ValueType, prefixLen int, ok bool) {
-	return t.LongestPrefixOf([]byte(str))
-}
-
-// LongestPrefixOf searches the longest matching prefix in input bytes.
-// If input has prefix that matches any stored key
-// returns associated value, prefix length, true OR nil, 0, false otherwise
-func (t *Trie) LongestPrefixOf(input []byte) (value ValueType, prefixLen int, ok bool) {
-	ind := 0
-	for ind < len(t.Prefix) && ind < len(input) && t.Prefix[ind] == input[ind] {
-		ind++
-	}
-
-	if ind < len(t.Prefix) {
-		// prefix didn't match It is not this trie or it's child
-		return nil, 0, false
-	}
-
-	if ind < len(input) && t.Children != nil && t.Children[input[ind]] != nil {
-		// continue matching children with next bytes from input. Greedy!
-		value, prefixLen, ok = t.Children[input[ind]].LongestPrefixOf(input[ind:])
-	}
-
-	if ok {
-		// we found something in children!
-		prefixLen += len(t.Prefix) // our prefix should be added to children's
-
-		return value, prefixLen, ok
-	}
-
-	if t.Value != nil {
-		// take our value
-		return t.Value, len(t.Prefix), true
-	}
-
-	// we have no value. Explicitly return size 0 because we can have prefix, but it doesn't matter
-	return nil, 0, false
-}
-
 func (t *Trie) GetString(key string) (ValueType, bool) {
 	return t.Get([]byte(key))
 }
@@ -204,36 +154,52 @@ func (t *Trie) Get(key []byte) (ValueType, bool) {
 	return t.Value, true
 }
 
-func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
-	var ind = 0
-	for ind < len(mask) && ind < len(t.Prefix) && mask[ind] == t.Prefix[ind] {
+func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
+	_, length, ok := t.SearchPrefixInString(str)
+	if ok {
+		return str[:length], true
+	}
+
+	return "", false
+}
+
+func (t *Trie) SearchPrefixInString(str string) (value ValueType, prefixLen int, ok bool) {
+	return t.SearchPrefixIn([]byte(str))
+}
+
+// SearchPrefixIn searches the longest matching prefix in input bytes.
+// If input has prefix that matches any stored key
+// returns associated value, prefix length, true OR nil, 0, false otherwise
+func (t *Trie) SearchPrefixIn(input []byte) (value ValueType, prefixLen int, ok bool) {
+	ind := 0
+	for ind < len(t.Prefix) && ind < len(input) && t.Prefix[ind] == input[ind] {
 		ind++
 	}
 
-	if ind == len(t.Prefix) {
-		if ind == len(mask) {
-			// complete match!
-			return t, true
-		} else {
-			// ind < len(mask)
-			// something else to match
-			if t.Children != nil && t.Children[mask[ind]] != nil {
-				return t.Children[mask[ind]].SubTrie(mask[ind:])
-			} else {
-				// no such child(
-				return nil, false
-			}
-		}
-	} else {
-		// ind < len(t.Prefix)
-		if ind == len(mask) {
-			// we matched all musk, but have some more bytes in mask. It's ok
-			return t, true
-		} else {
-			// mask doesn't match current
-			return nil, false
-		}
+	if ind < len(t.Prefix) {
+		// prefix didn't match It is not this trie or it's child
+		return nil, 0, false
 	}
+
+	if ind < len(input) && t.Children != nil && t.Children[input[ind]] != nil {
+		// continue matching children with next bytes from input. Greedy!
+		value, prefixLen, ok = t.Children[input[ind]].SearchPrefixIn(input[ind:])
+	}
+
+	if ok {
+		// we found something in children!
+		prefixLen += len(t.Prefix) // our prefix should be added to children's
+
+		return value, prefixLen, ok
+	}
+
+	if t.Value != nil {
+		// take our value
+		return t.Value, len(t.Prefix), true
+	}
+
+	// we have no value. Explicitly return size 0 because we can have prefix, but it doesn't matter
+	return nil, 0, false
 }
 
 // Iterate calls callback for each value stored in trie
@@ -260,6 +226,44 @@ func (t *Trie) iterate(prefix []byte, callback func([]byte, ValueType)) {
 			if t.Children[i] != nil {
 				t.Children[i].iterate(curPrefix, callback)
 			}
+		}
+	}
+}
+
+func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
+	var ind = 0
+	for ind < len(mask) && ind < len(t.Prefix) && mask[ind] == t.Prefix[ind] {
+		ind++
+	}
+
+	if ind == len(t.Prefix) {
+		if ind == len(mask) {
+			// complete match!
+			return t, true
+		} else {
+			// ind < len(mask)
+			// something else to match
+			if t.Children != nil && t.Children[mask[ind]] != nil {
+				return t.Children[mask[ind]].SubTrie(mask[ind:])
+			} else {
+				// no such child(
+				return nil, false
+			}
+		}
+	} else {
+		// ind < len(t.Prefix)
+		if ind == len(mask) {
+			// we matched all bytes in musk, but have some more bytes in prefix.
+			// create new trie with rest of prefix
+			res := &Trie{
+				Prefix:   t.Prefix[ind:],
+				Value:    t.Value,
+				Children: t.Children,
+			}
+			return res, true
+		} else {
+			// mask doesn't match current
+			return nil, false
 		}
 	}
 }

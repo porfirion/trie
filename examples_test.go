@@ -71,7 +71,7 @@ func ExampleTrie_SearchInString() {
 	for _, inp := range inputs {
 		format := "%s"
 
-		if raw, prefixLen, ok := tr.LongestPrefixOfString(inp); ok {
+		if raw, prefixLen, ok := tr.SearchPrefixInString(inp); ok {
 			format = raw.(string)
 			inp = inp[prefixLen+1:]
 		}
