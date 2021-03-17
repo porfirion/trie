@@ -54,7 +54,7 @@ func ExampleTrie_Iterate() {
 	// [[240 159 145 168 226 128 141 240 159 148 167]] withkey
 }
 
-func ExampleTrie_SearchInString() {
+func ExampleTrie_SearchPrefixInString() {
 	tr := BuildFromMap(map[string]interface{}{
 		"red":    "\033[1;31m%s\033[0m",
 		"blue":   "\033[1;36m%s\033[0m",

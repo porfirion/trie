@@ -1,10 +1,9 @@
 package trie
 
 import (
-	"fmt"
+	"bytes"
 	"math/rand"
 	"reflect"
-	"strings"
 	"testing"
 	"unicode/utf8"
 )
@@ -161,8 +160,28 @@ func TestTrie_SubTrie(t *testing.T) {
 		"/api/group/",
 		"/api/group/list",
 	)
-	fmt.Println(tr)
-	fmt.Println(strings.Join(getStrings(tr, formatAsStrings), "\n"))
+
+	//fmt.Println(strings.Join(tr.toStrings(formatAsStrings), "\n"))
+
+	type results struct {
+		ok         bool
+		rootPrefix []byte
+	}
+
+	selectors := map[string]results{
+		"/api/group":  {ok: true, rootPrefix: []byte("/")},
+		"/api/group/": {ok: true, rootPrefix: []byte("")},
+		"/test/":      {ok: false},
+	}
+
+	for selector, res := range selectors {
+		subTrie, ok := tr.SubTrie([]byte(selector))
+		if ok != res.ok {
+			t.Errorf(`wrong result for selector %s: got %t expected %t`, selector, ok, res.ok)
+		} else if ok && !bytes.Equal(res.rootPrefix, subTrie.Prefix) {
+			t.Errorf("wrong prefix in root Trie for selector %s: got %s expected %s", selector, subTrie.Prefix, res.rootPrefix)
+		}
+	}
 }
 
 func TestTrie_GetString(t *testing.T) {

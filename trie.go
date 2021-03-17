@@ -236,33 +236,27 @@ func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
 		ind++
 	}
 
-	if ind == len(t.Prefix) {
-		if ind == len(mask) {
-			// complete match!
-			return t, true
-		} else {
-			// ind < len(mask)
-			// something else to match
+	if ind == len(mask) {
+		// complete match for mask!
+		// copy the rest of t.Prefix (would be empty if t.Prefix match also complete)
+		res := &Trie{
+			Prefix:   t.Prefix[ind:],
+			Value:    t.Value,
+			Children: t.Children,
+		}
+		return res, true
+	} else {
+		// ind < len(mask)
+		if ind == len(t.Prefix) {
+			// match with current t.Prefix is complete. Continue match with it's child
 			if t.Children != nil && t.Children[mask[ind]] != nil {
 				return t.Children[mask[ind]].SubTrie(mask[ind:])
 			} else {
-				// no such child(
+				// no such child to continue(
 				return nil, false
 			}
-		}
-	} else {
-		// ind < len(t.Prefix)
-		if ind == len(mask) {
-			// we matched all bytes in musk, but have some more bytes in prefix.
-			// create new trie with rest of prefix
-			res := &Trie{
-				Prefix:   t.Prefix[ind:],
-				Value:    t.Value,
-				Children: t.Children,
-			}
-			return res, true
 		} else {
-			// mask doesn't match current
+			// mask and t.Prefix diverged
 			return nil, false
 		}
 	}

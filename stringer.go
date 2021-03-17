@@ -5,16 +5,18 @@ import (
 	"strings"
 )
 
+type prefixFormat int
+
 const (
-	formatAsBytes   = 0
-	formatAsStrings = 1
+	formatAsBytes   prefixFormat = 0
+	formatAsStrings prefixFormat = 1
 )
 
 func (t Trie) String() string {
-	return strings.Join(getStrings(&t, formatAsBytes), "\n")
+	return strings.Join(t.toStrings(formatAsBytes), "\n")
 }
 
-func getStrings(t *Trie, format int) []string {
+func (t Trie) toStrings(format prefixFormat) []string {
 	var resStrings []string
 	if format == formatAsStrings {
 		resStrings = append(resStrings, fmt.Sprintf("[%s] %v", string(t.Prefix), t.Value))
@@ -25,9 +27,9 @@ func getStrings(t *Trie, format int) []string {
 	if t.Children != nil {
 		for ind, c := range t.Children {
 			if c != nil {
-				var childStrings = getStrings(c, format)
+				var childStrings = c.toStrings(format)
 				resStrings = append(resStrings, fmt.Sprintf("├─%X─ %s", ind, childStrings[0]))
-				resStrings = append(resStrings, addPrefix("│     ", childStrings[1:])...)
+				resStrings = append(resStrings, addPrefix(childStrings[1:], "│     ")...)
 			}
 		}
 	}
@@ -35,7 +37,7 @@ func getStrings(t *Trie, format int) []string {
 	return resStrings
 }
 
-func addPrefix(prefix string, strs []string) []string {
+func addPrefix(strs []string, prefix string) []string {
 	for ind, str := range strs {
 		strs[ind] = prefix + str
 	}
