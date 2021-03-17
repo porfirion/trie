@@ -154,6 +154,58 @@ func (t *Trie) Get(key []byte) (ValueType, bool) {
 	return t.Value, true
 }
 
+// DeleteValue removes only one value with completely matching prefix
+func (t *Trie) DeleteValue(mask []byte) (ValueType, bool) {
+	ind := 0
+	for ind < len(t.Prefix) && ind < len(mask) && t.Prefix[ind] == mask[ind] {
+		ind++
+	}
+
+	if ind == len(t.Prefix) {
+		if ind == len(mask) {
+			// mask match complete too. It's that value
+
+			if t.Value != nil {
+				prevValue := t.Value
+				t.Value = nil
+
+				t.collapse(-1)
+
+				return prevValue, true
+			} else {
+				// there is no value - nothing to delete
+				return nil, false
+			}
+		} else {
+			if t.Children != nil && t.Children[ind] != nil {
+				res, ok := t.Children[ind].DeleteValue(mask[ind:])
+
+				if ok {
+					t.collapse(ind)
+				}
+
+				return res, true
+			} else {
+				// no child to match with
+				return nil, false
+			}
+		}
+	} else {
+		// not complete match to t.Prefix. It's not that value (even if mask matched comletely)
+		return nil, false
+	}
+}
+
+// DeleteSubTrie removes all value matching mask
+func (t *Trie) DeleteSubTrie(mask []byte) *Trie {
+
+}
+
+// -1 if own Value was removed
+func (t *Trie) collapse(indexOfValueThatWasRemoved int) {
+
+}
+
 func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
 	_, length, ok := t.SearchPrefixInString(str)
 	if ok {
