@@ -11,7 +11,7 @@ import (
 func TestTrie_Put(t *testing.T) {
 	tests := []struct {
 		prefix []byte
-		val    interface{}
+		val    ValueType
 	}{
 		{[]byte(`👨‍`), `👨‍`},
 		{[]byte(`👨‍🔧`), `👨‍🔧`},
@@ -34,12 +34,13 @@ func TestTrie_Put(t *testing.T) {
 			}},
 		}},
 	}}
+
 	if !reflect.DeepEqual(tr, expected) {
 		t.Fatalf("Not equal:\nexpected\n%s\ngot\n%s\n", expected, tr)
 	}
 }
 
-func TestTrie_PutEmpty(t *testing.T) {
+func TestTrie_Put__Empty(t *testing.T) {
 	tr := &Trie{}
 	// insert something before empty
 	tr.PutString("foo", "bar")
@@ -48,7 +49,7 @@ func TestTrie_PutEmpty(t *testing.T) {
 	if raw, ok := tr.Get(nil); !ok || raw.(string) != "universal" {
 		t.Error("can't get value with zero prefix")
 	}
-	if raw, ok := tr.GetString("foo"); !ok || raw.(string) != "bar" {
+	if raw, ok := tr.GetByString("foo"); !ok || raw.(string) != "bar" {
 		t.Error("can't get foo")
 	}
 
@@ -59,7 +60,7 @@ func TestTrie_PutEmpty(t *testing.T) {
 	if raw, ok := tr.Get(nil); !ok || raw.(string) != "universal" {
 		t.Error("can't get value with zero prefix")
 	}
-	if raw, ok := tr.GetString("foo"); !ok || raw.(string) != "bar" {
+	if raw, ok := tr.GetByString("foo"); !ok || raw.(string) != "bar" {
 		t.Error("can't get foo")
 	}
 
@@ -109,7 +110,7 @@ var (
 
 func TestTrie_SearchPrefixIn(t *testing.T) {
 	var str string
-	var expected = []interface{}{}
+	var expected = []ValueType{}
 
 	var runes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ|!?*+-/*{}[]()_^")
 
@@ -125,7 +126,7 @@ func TestTrie_SearchPrefixIn(t *testing.T) {
 		}
 	})
 
-	var found = make([]interface{}, 0)
+	var found = make([]ValueType, 0)
 	var ind = 0
 	for ind < len(str) {
 		_, size, ok := tr.SearchPrefixIn([]byte(str[ind:]))
@@ -153,53 +154,130 @@ func TestTrie_SearchPrefixIn(t *testing.T) {
 	}
 }
 
+func TestTrie_GetAll(t *testing.T) {
+	tr := BuildFromMap(map[string]ValueType{
+		"":                "root",
+		"/api/user":       "user",
+		"/api/user/list":  "list",
+		"/api/group/":     "group",
+		"/api/group/list": "list",
+	})
+
+	var inputs = map[string][]string{
+		"/api/user/list": {"root", "user", "list"},
+		"/api/test":      {"root"},
+		"/api/user/li":   {"root", "user"},
+	}
+
+	for key, expected := range inputs {
+		res := tr.GetAll([]byte(key))
+
+		typedRes := make([]string, len(res))
+		for i := range typedRes {
+			typedRes[i] = res[i].(string)
+		}
+
+		if !reflect.DeepEqual(typedRes, expected) {
+			t.Errorf("%s: got %v, expected %v", key, res, expected)
+		}
+	}
+}
+
 func TestTrie_SubTrie(t *testing.T) {
 	tr := BuildPrefixesOnly(
+		"",
 		"/api/user",
 		"/api/user/list",
 		"/api/group/",
 		"/api/group/list",
+		"/api/articles/list",
+		"/api/articles/raw",
 	)
 
 	//fmt.Println(strings.Join(tr.toStrings(formatAsStrings), "\n"))
 
+	type args struct {
+		selector   string
+		keepPrefix bool
+	}
 	type results struct {
 		ok         bool
 		rootPrefix []byte
 	}
 
-	selectors := map[string]results{
-		"/api/group":  {ok: true, rootPrefix: []byte("/")},
-		"/api/group/": {ok: true, rootPrefix: []byte("")},
-		"/test/":      {ok: false},
+	selectors := map[args]results{
+		{"/api/group", false}:        {ok: true, rootPrefix: []byte("/")},
+		{"/api/group/", false}:       {ok: true, rootPrefix: []byte("")},
+		{"/test/", false}:            {ok: false},
+		{"/api/group", true}:         {ok: true, rootPrefix: []byte("/api/group/")},
+		{"/api/articles/test", true}: {ok: false},
 	}
 
-	for selector, res := range selectors {
-		subTrie, ok := tr.SubTrie([]byte(selector))
+	for args, res := range selectors {
+		subTrie, ok := tr.SubTrie([]byte(args.selector), args.keepPrefix)
 		if ok != res.ok {
-			t.Errorf(`wrong result for selector %s: got %t expected %t`, selector, ok, res.ok)
+			t.Errorf(`wrong result for %v: got %t expected %t`, args, ok, res.ok)
 		} else if ok && !bytes.Equal(res.rootPrefix, subTrie.Prefix) {
-			t.Errorf("wrong prefix in root Trie for selector %s: got %s expected %s", selector, subTrie.Prefix, res.rootPrefix)
+			t.Errorf("wrong prefix in root Trie for %v: got %s expected %s", args, subTrie.Prefix, res.rootPrefix)
 		}
 	}
 }
 
-func TestTrie_GetString(t *testing.T) {
-	var available []string
-	tr.Iterate(func(prefix []byte, value interface{}) {
-		available = append(available, string(prefix))
+func TestTrie_GetByString(t *testing.T) {
+	tr := BuildFromMap(map[string]ValueType{
+		"":                       "root",
+		"/api/user":              "user",
+		"/api/user/list":         "users list",
+		"/api/group/":            "group",
+		"/api/group/list":        "groups list",
+		"/api/articles/list":     "articles list",
+		"/api/articles/raw/list": "raw articles list",
 	})
-	for i := range available {
-		if _, ok := tr.GetString(available[i]); !ok {
-			t.Errorf("Existing key \"%s\" was not found\n", available[i])
+
+	type result struct {
+		Value ValueType
+		OK    bool
+	}
+
+	var inputs = map[string]result{
+		"":                {"root", true},
+		"/api/user/list":  {"users list", true},
+		"/api/user/1":     {nil, false},
+		"/api/articles/":  {nil, false},
+		"/api/article":    {nil, false},
+		"/api/articles/1": {nil, false},
+	}
+
+	for key, res := range inputs {
+		v, ok := tr.GetByString(key)
+		if !reflect.DeepEqual(res.Value, v) || ok != res.OK {
+			t.Errorf("get %v expected %v", result{v, ok}, res)
 		}
 	}
-	for i := range available {
-		key := available[i] + "some junk"
-		if _, ok := tr.GetString(key); ok {
+}
 
-			t.Errorf("Not exsiting key \"%s\" was found\n", key)
-		}
+func TestTrie_Count(t *testing.T) {
+	sources := map[string]ValueType{
+		"":                       "root",
+		"/api/user":              "user",
+		"/api/user/list":         "users list",
+		"/api/group/":            "group",
+		"/api/group/list":        "groups list",
+		"/api/articles/list":     "articles list",
+		"/api/articles/raw/list": "raw articles list",
+	}
+
+	tr := BuildFromMap(sources)
+
+	// "/api/articles/" is common prefix for 2 entries,
+	// but it doesn't store a value and is not included into result
+
+	if l := tr.Count(); l != len(sources) {
+		t.Errorf("got %d expected %d", l, len(sources))
+	}
+
+	if (*Trie)(nil).Count() != 0 {
+		t.Errorf("uninitialized tree count should return 0")
 	}
 }
 
@@ -221,7 +299,7 @@ func BenchmarkTrie_Put(b *testing.B) {
 		tr.Put(randomString(), struct{}{})
 
 		// This variant shows only 1 allocation,
-		// but stopping and starting timer is very slow - benchmark can last for 30 seconds!
+		// but stopping and starting timer is very slow - benchmark can last for 30 seconds or more!
 		//b.StopTimer()
 		//str := randomString()
 		//b.StartTimer()

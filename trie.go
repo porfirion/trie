@@ -1,22 +1,24 @@
 // Copyright 2021, Mikhail Vitsen (@porfirion)
+// https://github.com/porfirion/trie
 package trie
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// YOU CAN COPY THIS FILE AND REPLACE ValueType ALIAS TO GET DEFINITELY TYPED TRIE.
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//    ┌────────────────────────────────────────────────────────────────────────┐
+//    │ You can copy file and change this alias to get _definitely typed_ trie │
+//    └────────────────────────────────────────────────────────────────────────┘
 //
 // Type of value stored in Trie (prepare for generics %))
-// Must be nillable (interface or pointer)!
+// Must be nil'able (another interface or pointer)!
 type ValueType = interface{}
 
 // type ValueType = *string
 // type ValueType = *CustomStruct
 
-// Sparse radix trie. Create it just as &Trie{} and add required data.
-// Also there are some convenience constructors (for example for one line initialization)
+// Sparse radix (Patricia) trie. Create it just as &Trie{} and add required data.
+// Also there are some convenience constructors (for example for initialization from map[prefix]value)
 // Makes zero allocation on Get and SearchPrefixIn operations and two allocations per Put
 //
-// type Trie[type ValueType] struct {...}
+// When generics come ^^ it would be a
+//     type Trie[type ValueType] struct {...}
 type Trie struct {
 	Prefix   []byte
 	Value    ValueType
@@ -118,7 +120,7 @@ func (t *Trie) getChildOrCreate(ind byte) *Trie {
 	return t.Children[ind]
 }
 
-func (t *Trie) GetString(key string) (ValueType, bool) {
+func (t *Trie) GetByString(key string) (ValueType, bool) {
 	return t.Get([]byte(key))
 }
 
@@ -146,12 +148,7 @@ func (t *Trie) Get(key []byte) (ValueType, bool) {
 		return nil, false
 	}
 
-	if t.Value == nil {
-		// all key matched, but current trie has no value (assuming we have some children with values)
-		return nil, false
-	}
-
-	return t.Value, true
+	return t.Value, t.Value != nil
 }
 
 func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
@@ -212,6 +209,9 @@ func (t *Trie) SearchPrefixIn(input []byte) (value ValueType, prefixLen int, ok 
 // It seems like the only possible iteration order is by key (prefix):
 //     0x1, 0x1 0x1, 0x1 0x2, 0x1 0x3, 0x2, 0x2 0x1, 0x2 0x2, etc...
 // But it's not guarantied. You shouldn't rely on it!
+//
+// Can be used in combination with SubTrie:
+//     tr.SubTrie(mask).Iterate(func...)
 func (t *Trie) Iterate(callback func(prefix []byte, value ValueType)) {
 	t.iterate(make([]byte, 0, 1024), callback)
 }
@@ -230,7 +230,19 @@ func (t *Trie) iterate(prefix []byte, callback func([]byte, ValueType)) {
 	}
 }
 
-func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
+// SubTrie returns new Trie with all values whose prefixes include mask
+//
+// keepPrefix indicates whether the new trie should keep original prefixes,
+// or should contain only those parts, that are out of mask:
+//     tr := {"": v0, "/user/": v1, "/user/list": v2, "/group/": v3}.
+//
+//     tr.SubTrie("/user", false) -> {"/": v1, "/list": v2}
+//     tr.SubTrie("/user", true) -> {"/user/": v1, "/user/list": v2}
+func (t *Trie) SubTrie(mask []byte, keepPrefix bool) (subTrie *Trie, ok bool) {
+	return t.subTrie(mask, keepPrefix, mask, 0)
+}
+
+func (t *Trie) subTrie(mask []byte, keepPrefix bool, originalMask []byte, originalMaskInd int) (subTrie *Trie, ok bool) {
 	var ind = 0
 	for ind < len(mask) && ind < len(t.Prefix) && mask[ind] == t.Prefix[ind] {
 		ind++
@@ -238,19 +250,28 @@ func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
 
 	if ind == len(mask) {
 		// complete match for mask!
-		// copy the rest of t.Prefix (would be empty if t.Prefix match also complete)
 		res := &Trie{
-			Prefix:   t.Prefix[ind:],
+			// Prefix to be filled
 			Value:    t.Value,
 			Children: t.Children,
 		}
+
+		if keepPrefix {
+			res.Prefix = make([]byte, len(originalMask[:originalMaskInd])+len(t.Prefix))
+			copy(res.Prefix, originalMask[:originalMaskInd])
+			copy(res.Prefix[ind:], t.Prefix)
+		} else {
+			// copy the rest of t.Prefix (would be empty if t.Prefix match also complete)
+			res.Prefix = t.Prefix[ind:]
+		}
+
 		return res, true
 	} else {
 		// ind < len(mask)
 		if ind == len(t.Prefix) {
 			// match with current t.Prefix is complete. Continue match with it's child
 			if t.Children != nil && t.Children[mask[ind]] != nil {
-				return t.Children[mask[ind]].SubTrie(mask[ind:])
+				return t.Children[mask[ind]].subTrie(mask[ind:], keepPrefix, originalMask, originalMaskInd+ind)
 			} else {
 				// no such child to continue(
 				return nil, false
@@ -259,6 +280,32 @@ func (t *Trie) SubTrie(mask []byte) (subTrie *Trie, ok bool) {
 			// mask and t.Prefix diverged
 			return nil, false
 		}
+	}
+}
+
+// GetAll returns all Values whose prefixes are subsets of mask
+//    tr := ("": v0, "/user/": v1, "/user/list": v2, "/group/": v3)
+//
+//    tr.GetAll("/user/list", false) -> [v0, v1, v2]
+func (t *Trie) GetAll(mask []byte) []ValueType {
+	var ind = 0
+	for ind < len(mask) && ind < len(t.Prefix) && mask[ind] == t.Prefix[ind] {
+		ind++
+	}
+	if ind == len(t.Prefix) {
+		var res = make([]ValueType, 0, 1)
+		if t.Value != nil {
+			res = append(res, t.Value)
+		}
+
+		if ind < len(mask) && t.Children != nil && t.Children[mask[ind]] != nil {
+			return append(res, t.Children[mask[ind]].GetAll(mask[ind:])...)
+		}
+
+		return res
+	} else {
+		// doesn't match current prefix
+		return nil
 	}
 }
 
