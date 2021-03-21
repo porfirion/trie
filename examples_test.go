@@ -1,6 +1,10 @@
 package trie
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+	"unicode"
+)
 
 func ExampleBuildPrefixesOnly() {
 	prefixes := BuildPrefixesOnly("tiny_", "small_", "normal_", "large_")
@@ -56,32 +60,56 @@ func ExampleTrie_Iterate() {
 
 func ExampleTrie_SearchPrefixInString() {
 	tr := BuildFromMap(map[string]interface{}{
-		"red":    "\033[1;31m%s\033[0m",
-		"blue":   "\033[1;36m%s\033[0m",
-		"green":  "\033[1;32m%s\033[0m",
-		"yellow": "\033[1;33m%s\033[0m",
+		"lower": func(s string) string { return strings.ToLower(s) },
+		"upper": func(s string) string { return strings.ToUpper(s) },
+		"snake": func(s string) string {
+			var res = make([]rune, 0, len(s))
+			for i, r := range s {
+				if unicode.IsUpper(r) && i > 0 {
+					res = append(res, '_', unicode.ToLower(r))
+				} else {
+					res = append(res, unicode.ToLower(r))
+				}
+			}
+			return string(res)
+		},
+		"camel": func(s string) string {
+			var res = make([]rune, 0, len(s))
+			toUpper := false
+			for _, r := range s {
+				if r == '_' {
+					toUpper = true
+					continue
+				} else if toUpper {
+					res = append(res, unicode.ToUpper(r))
+					toUpper = false
+				} else {
+					res = append(res, unicode.ToLower(r))
+				}
+			}
+			return string(res)
+		},
 	})
 	inputs := []string{
-		"green_apple",
-		"yellow_banana",
-		"red_strawberry",
-		"blue_whale",
-		"noprefixnocolor",
+		"upperapple",
+		"lowerBANANA",
+		"cameltest_me",
+		"snakeAnotherExample",
+		"noprefixString",
 	}
 	for _, inp := range inputs {
-		format := "%s"
-
 		if raw, prefixLen, ok := tr.SearchPrefixInString(inp); ok {
-			format = raw.(string)
-			inp = inp[prefixLen+1:]
+			format := raw.(func(string) string)
+			fmt.Println(format(inp[prefixLen:]))
+		} else {
+			fmt.Printf("no prefix found in \"%s\"\n", inp)
 		}
-
-		fmt.Printf(format+"\n", inp)
 	}
+
 	// Output:
-	// [1;32mapple[0m
-	// [1;33mbanana[0m
-	// [1;31mstrawberry[0m
-	// [1;36mwhale[0m
-	// noprefixnocolor
+	//APPLE
+	//banana
+	//testMe
+	//another_example
+	//no prefix found in "noprefixString"
 }
