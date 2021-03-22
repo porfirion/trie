@@ -1,4 +1,7 @@
-// Sparse radix tree implementation in golang (without any dependencies).
+// Package trie contains radix tree implementation in golang (without any dependencies).
+//
+// Copyright 2021, Mikhail Vitsen (@porfirion)
+// https://github.com/porfirion/trie
 //
 // Trie maps `[]byte` prefixes to `interface{}` values.
 // It can be used for efficient search of substrings or bulk prefix checking.

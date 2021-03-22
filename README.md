@@ -1,6 +1,10 @@
-#Trie - compact and efficient radix tree (Patricia trie) implementation in go
+# Trie - compact and efficient radix tree (Patricia trie) implementation in go
 
 Efficient implementation with zero allocation for read operations (Get and Search) and 1 or 2 allocations per Add
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/porfirion/trie.svg)](https://pkg.go.dev/github.com/porfirion/trie)
+[![Go Report Card](https://goreportcard.com/badge/github.com/porfirion/trie)](https://goreportcard.com/report/github.com/porfirion/trie)
+[![Coverage Status](https://coveralls.io/repos/github/porfirion/trie/badge.svg?branch=master)](https://coveralls.io/github/porfirion/trie?branch=master)
 
 Current implementation (due to lack of generics) uses interface{} to store values. But it's type defined as an alias, and you can easily copy source file and replace alias with any other nil'able type (pointer or other interface) and get a definitely typed implementation:
 
@@ -8,11 +12,11 @@ Current implementation (due to lack of generics) uses interface{} to store value
 type ValueType = interface{}
 ```
 
-##Installation
+## Installation
 
     go get github.com/porfirion/trie
 
-##Usage
+## Usage
 
 Trie can be used in different ways:
 
@@ -28,7 +32,7 @@ Also, this implementation supports zero-length prefix (`[]byte{}` or `nil`). Val
 
 Limitation: `nil` can't be stored as value, because node containing nil value considered empty.
 
-##Examples
+## Examples
 
 Search prefixes:
 ```go
@@ -117,6 +121,6 @@ func Example_routing() {
 }
 ```
 
-##Notes
+## Notes
 
 I didn't implement `Delete`/`Remove` operation as I assumed only checking for predefined list of prefixes. I you find it useful and really need it - please, open issue, I'll add it.

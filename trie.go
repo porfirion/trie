@@ -1,21 +1,20 @@
-// Copyright 2021, Mikhail Vitsen (@porfirion)
-// https://github.com/porfirion/trie
 package trie
 
+// ValueType is an alias used to hold type of values stored in trie (prepare for generics %))
 //    ┌────────────────────────────────────────────────────────────────────────┐
 //    │ You can copy file and change this alias to get _definitely typed_ trie │
 //    └────────────────────────────────────────────────────────────────────────┘
-//
-// Type of value stored in Trie (prepare for generics %))
 // Must be nil'able (another interface or pointer)!
 type ValueType = interface{}
 
 // type ValueType = *string
 // type ValueType = *CustomStruct
 
-// Sparse radix (Patricia) trie. Create it just as &Trie{} and add required data.
-// Also there are some convenience constructors (for example for initialization from map[prefix]value)
+// Trie implements sparse radix (Patricia) trie.
 // Makes zero allocation on Get and SearchPrefixIn operations and two allocations per Put
+//
+// Create it just as &Trie{} and add required data.
+// Also there are some convenience constructors (for example for initialization from map[prefix]value)
 //
 // When generics come ^^ it would be a
 //     type Trie[type ValueType] struct {...}
@@ -25,7 +24,7 @@ type Trie struct {
 	Children *[256]*Trie
 }
 
-// Convenience method for Put()
+// PutString is a convenience method for Put()
 func (t *Trie) PutString(prefix string, value ValueType) {
 	t.Put([]byte(prefix), value)
 }
@@ -120,6 +119,7 @@ func (t *Trie) getChildOrCreate(ind byte) *Trie {
 	return t.Children[ind]
 }
 
+// GetByString is a convenience method for Get
 func (t *Trie) GetByString(key string) (ValueType, bool) {
 	return t.Get([]byte(key))
 }
@@ -151,6 +151,8 @@ func (t *Trie) Get(key []byte) (ValueType, bool) {
 	return t.Value, t.Value != nil
 }
 
+// TakePrefix returns only found prefix without corresponding value.
+// Just for convenience.
 func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
 	_, length, ok := t.SearchPrefixInString(str)
 	if ok {
@@ -160,6 +162,7 @@ func (t *Trie) TakePrefix(str string) (prefix string, ok bool) {
 	return "", false
 }
 
+// SearchPrefixInString is a convenience method for SearchPrefixIn
 func (t *Trie) SearchPrefixInString(str string) (value ValueType, prefixLen int, ok bool) {
 	return t.SearchPrefixIn([]byte(str))
 }
@@ -286,6 +289,7 @@ func (t *Trie) subTrie(mask []byte, keepPrefix bool, originalMask []byte, origin
 	}
 }
 
+// GetAllByString is a convenience method for GetAll
 func (t *Trie) GetAllByString(str string) []ValueType {
 	return t.GetAll([]byte(str))
 }
@@ -317,6 +321,7 @@ func (t *Trie) GetAll(mask []byte) []ValueType {
 	}
 }
 
+// Count returns amount of values (non nil) stored in all nodes of trie.
 func (t *Trie) Count() int {
 	if t == nil {
 		return 0
