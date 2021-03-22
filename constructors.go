@@ -1,5 +1,6 @@
 package trie
 
+// BuildFromMap may be useful for var declaration
 func BuildFromMap(inputs map[string]ValueType) *Trie {
 	t := &Trie{}
 	for key, value := range inputs {

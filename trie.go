@@ -236,8 +236,11 @@ func (t *Trie) iterate(prefix []byte, callback func([]byte, ValueType)) {
 // or should contain only those parts, that are out of mask:
 //     tr := {"": v0, "/user/": v1, "/user/list": v2, "/group/": v3}.
 //
-//     tr.SubTrie("/user", false) -> {"/": v1, "/list": v2}
-//     tr.SubTrie("/user", true) -> {"/user/": v1, "/user/list": v2}
+//     tr.SubTrie("/user", false)
+//     -> {"/": v1, "/list": v2}
+//
+//     tr.SubTrie("/user", true)
+//     -> {"/user/": v1, "/user/list": v2}
 func (t *Trie) SubTrie(mask []byte, keepPrefix bool) (subTrie *Trie, ok bool) {
 	return t.subTrie(mask, keepPrefix, mask, 0)
 }
@@ -283,10 +286,15 @@ func (t *Trie) subTrie(mask []byte, keepPrefix bool, originalMask []byte, origin
 	}
 }
 
+func (t *Trie) GetAllByString(str string) []ValueType {
+	return t.GetAll([]byte(str))
+}
+
 // GetAll returns all Values whose prefixes are subsets of mask
-//    tr := ("": v0, "/user/": v1, "/user/list": v2, "/group/": v3)
+//    tr := {"": v0, "/user/": v1, "/user/list": v2, "/group/": v3}
 //
-//    tr.GetAll("/user/list", false) -> [v0, v1, v2]
+//    tr.GetAll("/user/list", false)
+//    -> [v0, v1, v2]
 func (t *Trie) GetAll(mask []byte) []ValueType {
 	var ind = 0
 	for ind < len(mask) && ind < len(t.Prefix) && mask[ind] == t.Prefix[ind] {
