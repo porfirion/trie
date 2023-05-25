@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-var routes = BuildFromMap(map[string]interface{}{
+var routes = BuildFromMap(map[string]string{
 	"":                "root", // as universal prefix
 	"/api/user":       "user",
 	"/api/user/list":  "usersList",

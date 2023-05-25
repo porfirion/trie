@@ -6,13 +6,13 @@ import (
 )
 
 // Also can be created with
-//    prefixes := &trie.Trie{}
-//    prefixes.PutString("one", 1)
-//    prefixes.PutString("two", 2)
-//    prefixes.PutString("three", 3)
-//    prefixes.PutString("", 0)
 //
-var prefixes = BuildFromMap(map[string]ValueType{
+//	prefixes := &trie.Trie{}
+//	prefixes.PutString("one", 1)
+//	prefixes.PutString("two", 2)
+//	prefixes.PutString("three", 3)
+//	prefixes.PutString("", 0)
+var prefixes = BuildFromMap(map[string]int{
 	"one":   1,
 	"two":   2,
 	"three": 3,
@@ -28,7 +28,7 @@ func Example_prefixes() {
 
 	for _, inp := range inputs {
 		if val, prefixLen, ok := prefixes.SearchPrefixInString(inp); ok {
-			fmt.Println(strings.Repeat(inp[prefixLen:], val.(int)))
+			fmt.Println(strings.Repeat(inp[prefixLen:], val))
 		}
 	}
 
