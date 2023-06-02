@@ -11,7 +11,7 @@ import (
 func TestTrie_Put(t *testing.T) {
 	tests := []struct {
 		prefix []byte
-		val    ValueType
+		val    string
 	}{
 		{[]byte(`👨‍`), `👨‍`},
 		{[]byte(`👨‍🔧`), `👨‍🔧`},
@@ -21,16 +21,16 @@ func TestTrie_Put(t *testing.T) {
 		{[]byte{0xF0, 0x9F, 0x91}, "short"},          // add the same
 	}
 
-	tr := &Trie{}
+	tr := &Trie[string]{}
 	for _, tt := range tests {
 		tr.Put(tt.prefix, tt.val)
 	}
 
-	var expected = &Trie{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: "short", Children: &[256]*Trie{
-		0x10: {Prefix: []byte{0x10}, Value: "modified"},
-		0xA8: {Prefix: []byte{0xA8}, Value: `👨`, Children: &[256]*Trie{
-			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: `👨‍`, Children: &[256]*Trie{
-				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: `👨‍🔧`},
+	var expected = &Trie[string]{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: ptr("short"), Children: &[256]*Trie[string]{
+		0x10: {Prefix: []byte{0x10}, Value: ptr("modified")},
+		0xA8: {Prefix: []byte{0xA8}, Value: ptr(`👨`), Children: &[256]*Trie[string]{
+			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: ptr(`👨‍`), Children: &[256]*Trie[string]{
+				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: ptr(`👨‍🔧`)},
 			}},
 		}},
 	}}
@@ -41,66 +41,66 @@ func TestTrie_Put(t *testing.T) {
 }
 
 func TestTrie_Put__Empty(t *testing.T) {
-	tr := &Trie{}
+	tr := &Trie[string]{}
 	// insert something before empty
 	tr.PutString("foo", "bar")
 	tr.Put(nil, "universal")
 
-	if raw, ok := tr.Get(nil); !ok || raw.(string) != "universal" {
+	if raw, ok := tr.Get(nil); !ok || raw != "universal" {
 		t.Error("can't get value with zero prefix")
 	}
-	if raw, ok := tr.GetByString("foo"); !ok || raw.(string) != "bar" {
+	if raw, ok := tr.GetByString("foo"); !ok || raw != "bar" {
 		t.Error("can't get foo")
 	}
 
-	tr = &Trie{}
+	tr = &Trie[string]{}
 	// insert empty before others
 	tr.Put(nil, "universal")
 	tr.PutString("foo", "bar")
-	if raw, ok := tr.Get(nil); !ok || raw.(string) != "universal" {
+	if raw, ok := tr.Get(nil); !ok || raw != "universal" {
 		t.Error("can't get value with zero prefix")
 	}
-	if raw, ok := tr.GetByString("foo"); !ok || raw.(string) != "bar" {
+	if raw, ok := tr.GetByString("foo"); !ok || raw != "bar" {
 		t.Error("can't get foo")
 	}
 
 	// replace one empty with another
-	tr = &Trie{}
+	tr = &Trie[string]{}
 	tr.Put(nil, "universal")
 	prev := tr.Put(nil, "universal2")
 
-	if prev == nil {
+	if prev == "" {
 		t.Error("there was previous value and it should be returned")
 	}
 
-	if raw, ok := tr.Get(nil); !ok || raw.(string) != "universal2" {
+	if raw, ok := tr.Get(nil); !ok || raw != "universal2" {
 		t.Error("can't get value with zero prefix")
 	}
 }
 
 // it's ok to add funcs if they implement Equaler
 func TestTrie_AddFuncTwice(t *testing.T) {
-	tr := &Trie{}
+	tr := &Trie[func()]{}
 	tr.PutString("foo", func() {})
 	tr.PutString("foo", func() {})
 }
 
-type T = Trie
+type T = Trie[string]
 
 // inputs := []string{"⏰", "✈️", "🆎", "🎟️", "◼"}
 var (
 	tr = T{Prefix: []byte{0xF0, 0x9F, 0x91}, Children: &[256]*T{
-		0xA8: {Prefix: []byte{0xA8}, Value: "👨" /*F0 9F 91 A8*/, Children: &[256]*T{
+		0xA8: {Prefix: []byte{0xA8}, Value: ptr("👨") /*F0 9F 91 A8*/, Children: &[256]*T{
 			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Children: &[256]*T{
 				0xE2: {Prefix: []byte{0xE2}, Children: &[256]*T{
 					0x9A: {Prefix: []byte{0x9A}, Children: &[256]*T{
-						0x95: {Prefix: []byte{0x95, 0xEF, 0xB8, 0x8F}, Value: "👨‍⚕️" /*F0 9F 91 A8 E2 80 8D E2 9A 95 EF B8 8F*/},
-						0x96: {Prefix: []byte{0x96, 0xEF, 0xB8, 0x8F}, Value: "👨‍⚖️" /*F0 9F 91 A8 E2 80 8D E2 9A 96 EF B8 8F*/},
+						0x95: {Prefix: []byte{0x95, 0xEF, 0xB8, 0x8F}, Value: ptr("👨‍⚕️") /*F0 9F 91 A8 E2 80 8D E2 9A 95 EF B8 8F*/},
+						0x96: {Prefix: []byte{0x96, 0xEF, 0xB8, 0x8F}, Value: ptr("👨‍⚖️") /*F0 9F 91 A8 E2 80 8D E2 9A 96 EF B8 8F*/},
 					}},
-					0x9C: {Prefix: []byte{0x9C, 0x88, 0xEF, 0xB8, 0x8F}, Value: "👨‍✈️" /*F0 9F 91 A8 E2 80 8D E2 9C 88 EF B8 8F*/},
+					0x9C: {Prefix: []byte{0x9C, 0x88, 0xEF, 0xB8, 0x8F}, Value: ptr("👨‍✈️") /*F0 9F 91 A8 E2 80 8D E2 9C 88 EF B8 8F*/},
 					0x9D: {Prefix: []byte{0x9D, 0xA4, 0xEF, 0xB8, 0x8F, 0xE2, 0x80, 0x8D, 0xF0, 0x9F}, Children: &[256]*T{
-						0x91: {Prefix: []byte{0x91, 0xA8}, Value: "👨‍❤️‍👨" /*F0 9F 91 A8 E2 80 8D E2 9D A4 EF B8 8F E2 80 8D F0 9F 91 A8*/},
-						0x92: {Prefix: []byte{0x92, 0x8B, 0xE2, 0x80, 0x8D, 0xF0, 0x9F, 0x91, 0xA8}, Value: "👨‍❤️‍💋‍👨" /*F0 9F 91 A8 E2 80 8D E2 9D A4 EF B8 8F E2 80 8D F0 9F 92 8B E2 80 8D F0 9F 91 A8*/},
+						0x91: {Prefix: []byte{0x91, 0xA8}, Value: ptr("👨‍❤️‍👨") /*F0 9F 91 A8 E2 80 8D E2 9D A4 EF B8 8F E2 80 8D F0 9F 91 A8*/},
+						0x92: {Prefix: []byte{0x92, 0x8B, 0xE2, 0x80, 0x8D, 0xF0, 0x9F, 0x91, 0xA8}, Value: ptr("👨‍❤️‍💋‍👨") /*F0 9F 91 A8 E2 80 8D E2 9D A4 EF B8 8F E2 80 8D F0 9F 92 8B E2 80 8D F0 9F 91 A8*/},
 					}},
 				}},
 			}},
@@ -110,11 +110,11 @@ var (
 
 func TestTrie_SearchPrefixIn(t *testing.T) {
 	var str string
-	var expected = []ValueType{}
+	var expected = []any{}
 
 	var runes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ|!?*+-/*{}[]()_^")
 
-	tr.Iterate(func(prefix []byte, value interface{}) {
+	tr.Iterate(func(prefix []byte, value string) {
 		expected = append(expected, string(prefix))
 		str += string(prefix)
 
@@ -126,7 +126,7 @@ func TestTrie_SearchPrefixIn(t *testing.T) {
 		}
 	})
 
-	var found = make([]ValueType, 0)
+	var found = make([]any, 0)
 	var ind = 0
 	for ind < len(str) {
 		_, size, ok := tr.SearchPrefixIn([]byte(str[ind:]))
@@ -155,7 +155,7 @@ func TestTrie_SearchPrefixIn(t *testing.T) {
 }
 
 func TestTrie_GetAll(t *testing.T) {
-	tr := BuildFromMap(map[string]ValueType{
+	tr := BuildFromMap(map[string]string{
 		"":                "root",
 		"/api/user":       "user",
 		"/api/user/list":  "list",
@@ -174,7 +174,7 @@ func TestTrie_GetAll(t *testing.T) {
 
 		typedRes := make([]string, len(res))
 		for i := range typedRes {
-			typedRes[i] = res[i].(string)
+			typedRes[i] = res[i]
 		}
 
 		if !reflect.DeepEqual(typedRes, expected) {
@@ -224,7 +224,7 @@ func TestTrie_SubTrie(t *testing.T) {
 }
 
 func TestTrie_GetByString(t *testing.T) {
-	tr := BuildFromMap(map[string]ValueType{
+	tr := BuildFromMap(map[string]string{
 		"":                       "root",
 		"/api/user":              "user",
 		"/api/user/list":         "users list",
@@ -235,17 +235,17 @@ func TestTrie_GetByString(t *testing.T) {
 	})
 
 	type result struct {
-		Value ValueType
+		Value string
 		OK    bool
 	}
 
 	var inputs = map[string]result{
 		"":                {"root", true},
 		"/api/user/list":  {"users list", true},
-		"/api/user/1":     {nil, false},
-		"/api/articles/":  {nil, false},
-		"/api/article":    {nil, false},
-		"/api/articles/1": {nil, false},
+		"/api/user/1":     {"", false},
+		"/api/articles/":  {"", false},
+		"/api/article":    {"", false},
+		"/api/articles/1": {"", false},
 	}
 
 	for key, res := range inputs {
@@ -257,7 +257,7 @@ func TestTrie_GetByString(t *testing.T) {
 }
 
 func TestTrie_Count(t *testing.T) {
-	sources := map[string]ValueType{
+	sources := map[string]string{
 		"":                       "root",
 		"/api/user":              "user",
 		"/api/user/list":         "users list",
@@ -276,11 +276,12 @@ func TestTrie_Count(t *testing.T) {
 		t.Errorf("got %d expected %d", l, len(sources))
 	}
 
-	if (*Trie)(nil).Count() != 0 {
+	if (*Trie[struct{}])(nil).Count() != 0 {
 		t.Errorf("uninitialized tree count should return 0")
 	}
 }
 
+// BenchmarkTrie_Put-8   	 1000000	      1268 ns/op	     509 B/op	       2 allocs/op
 func BenchmarkTrie_Put(b *testing.B) {
 	b.ReportAllocs()
 
@@ -293,7 +294,7 @@ func BenchmarkTrie_Put(b *testing.B) {
 		return b
 	}
 
-	tr := &Trie{}
+	tr := &Trie[struct{}]{}
 	for i := 0; i < b.N; i++ {
 		// one allocation for random string generation
 		tr.Put(randomString(), struct{}{})
@@ -307,6 +308,7 @@ func BenchmarkTrie_Put(b *testing.B) {
 	}
 }
 
+// BenchmarkTrie_Get-8   	24781945	        43.63 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkTrie_Get(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -317,6 +319,7 @@ func BenchmarkTrie_Get(b *testing.B) {
 	}
 }
 
+// BenchmarkTrie_SearchPrefixIn-8   	23258272	        49.96 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkTrie_SearchPrefixIn(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -325,4 +328,8 @@ func BenchmarkTrie_SearchPrefixIn(b *testing.B) {
 			b.Fail()
 		}
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

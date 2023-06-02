@@ -2,11 +2,18 @@ package export
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/porfirion/trie"
 )
+
+//go:generate go run gen.go
+
+type Exportable interface {
+	Export() string
+}
 
 var (
 	// string representation of byte (0x01..0xFF)
@@ -20,7 +27,7 @@ func init() {
 }
 
 // Exports Trie as go code (compatible with gofmt).
-func Export(t *trie.Trie, settings ExportSettings) string {
+func Export[T any](t *trie.Trie[T], settings ExportSettings) string {
 	if t == nil {
 		return settings.CurrentPadding + "nil"
 	}
@@ -87,19 +94,44 @@ func (settings ExportSettings) ForChild() ExportSettings {
 	return settings
 }
 
-type Exportable interface {
-	Export() string
+func exportGenericType[T any]() string {
+	var v T
+	res := reflect.TypeOf(&v).Elem().String()
+	if res == "interface {}" {
+		return "[any]"
+	} else {
+		return "[" + res + "]"
+	}
 }
 
-func exportValue(v interface{}) string {
+func exportValue[T any](v *T) (res string) {
 	if v == nil {
 		return `nil`
 	}
-	switch val := v.(type) {
+	defer func() {
+		res = "ptr" + exportGenericType[T]() + "(" + res + ")"
+	}()
+	defer func() {
+		if reflect.ValueOf(v).Elem().Type().Kind() != reflect.Interface {
+			//    │          │      └ T type itself
+			//    │          └ value T
+			//    └ pointer to T
+
+			//
+			return
+		}
+		tp := reflect.ValueOf(v).Elem().Elem().Type()
+		switch tp.Kind() {
+		case reflect.String, reflect.Bool, reflect.Int:
+			return
+		default:
+			res = "(" + tp.String() + ")" + "(" + res + ")"
+			return
+		}
+	}()
+	switch val := any(*v).(type) {
 	case Exportable:
 		return val.Export()
-	case *string:
-		return `"` + *val + `"` // + fmt.Sprintf(`/*%s*/`, stringToBytes(val))
 	case string:
 		return `"` + val + `"` // + fmt.Sprintf(`/*%s*/`, stringToBytes(val))
 	case int:
@@ -121,7 +153,9 @@ func exportValue(v interface{}) string {
 	case bool:
 		return strconv.FormatBool(val)
 	default:
-		return fmt.Sprintf(`%#v`, v)
+		// There can be wrong formatting.
+		// If so - you should just implement Exportable interface
+		return fmt.Sprintf(`%+v`, *v)
 	}
 }
 

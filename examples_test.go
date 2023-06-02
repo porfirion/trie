@@ -21,11 +21,11 @@ func ExampleBuildPrefixesOnly() {
 }
 
 func ExampleTrie_String() {
-	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: "short", Children: &[256]*T{
-		0x10: {Prefix: []byte{0x10}, Value: "modified"},
-		0xA8: {Prefix: []byte{0xA8}, Value: "nokey", Children: &[256]*T{
-			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: "withsep", Children: &[256]*T{
-				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: "withkey"},
+	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: ptr("short"), Children: &[256]*T{
+		0x10: {Prefix: []byte{0x10}, Value: ptr("modified")},
+		0xA8: {Prefix: []byte{0xA8}, Value: ptr("nokey"), Children: &[256]*T{
+			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: ptr("withsep"), Children: &[256]*T{
+				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: ptr("withkey")},
 			}},
 		}},
 	}}
@@ -39,15 +39,15 @@ func ExampleTrie_String() {
 }
 
 func ExampleTrie_Iterate() {
-	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: "short", Children: &[256]*T{
-		0x10: {Prefix: []byte{0x10}, Value: "modified"},
-		0xA8: {Prefix: []byte{0xA8}, Value: "nokey", Children: &[256]*T{
-			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: "withsep", Children: &[256]*T{
-				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: "withkey"},
+	example := &T{Prefix: []byte{0xF0, 0x9F, 0x91}, Value: ptr("short"), Children: &[256]*T{
+		0x10: {Prefix: []byte{0x10}, Value: ptr("modified")},
+		0xA8: {Prefix: []byte{0xA8}, Value: ptr("nokey"), Children: &[256]*T{
+			0xE2: {Prefix: []byte{0xE2, 0x80, 0x8D}, Value: ptr("withsep"), Children: &[256]*T{
+				0xF0: {Prefix: []byte{0xF0, 0x9F, 0x94, 0xA7}, Value: ptr("withkey")},
 			}},
 		}},
 	}}
-	example.Iterate(func(prefix []byte, value interface{}) {
+	example.Iterate(func(prefix []byte, value string) {
 		fmt.Printf("[%v] %+v\n", prefix, value)
 	})
 	// Output:

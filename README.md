@@ -1,16 +1,10 @@
-# Trie - compact and efficient radix tree (Patricia trie) implementation in go
+# Trie - compact and efficient generic radix tree (Patricia trie) implementation in go
 
-Efficient implementation with zero allocation for read operations (Get and Search) and 1 or 2 allocations per Add
+Efficient generic implementation with zero allocation for read operations (Get and Search) and 1 or 2 allocations per Put operation
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/porfirion/trie.svg)](https://pkg.go.dev/github.com/porfirion/trie)
 [![Go Report Card](https://goreportcard.com/badge/github.com/porfirion/trie)](https://goreportcard.com/report/github.com/porfirion/trie)
 [![Coverage Status](https://coveralls.io/repos/github/porfirion/trie/badge.svg?branch=master)](https://coveralls.io/github/porfirion/trie?branch=master)
-
-Current implementation (due to lack of generics) uses interface{} to store values. But it's type defined as an alias, and you can easily copy source file and replace alias with any other nil'able type (pointer or other interface) and get a definitely typed implementation:
-
-```go
-type ValueType = interface{}
-```
 
 ## Installation
 
@@ -18,19 +12,39 @@ type ValueType = interface{}
 
 ## Usage
 
+```go
+tr := &trie.Trie[int]
+tr.PutString("hello", 1) // same as tr.Put([]byte("hello"), 1)
+// OR
+tr := trie.BuildFromMap(map[string]int{ 
+	"hello": 1 
+})
+
+v, ok := tr.GetByString("hello")
+fmt.Println(v)
+```
+
 Trie can be used in different ways:
 
-1. Primarily I created it for searching emojis :smile: in text (in Telegram messages). There are about 3,3k emojis in current standard (https://www.unicode.org/emoji/charts-13.0/emoji-counts.html) and checking them one by one is very costly. For this purpose I added export package: you can generate source code for trie with all available emojis and compile it in your program. 
+1. Primarily I created it for searching emojis :smile: in text (in Telegram messages). There are about 3,3k emojis 
+   in current standard (https://www.unicode.org/emoji/charts-13.0/emoji-counts.html) and checking them one by one 
+   is very costly. For this purpose I added export package: you can generate source code for trie with all available 
+   emojis and compile it in your program.  
 
-2. You can use it as map, where key is a slice of arbitrary bytes (`map[[]byte]interface{}` which is not possible in language because slices are not comparable and can't be used as keys).
+2. You can use it as map, where key is a slice of arbitrary bytes (`map[[]byte]interface{}` which is not possible 
+   in language because slices are not comparable and can't be used as keys).
 
 3. You can use this trie to check for any string prefixes (possibly storing some payload for each prefix). See example below.
 
-4. You can build some router using this Trie. For this purpose I added `SubTrie(mask []byte)` method that returns sub trie with all entries, prefixed by specified mask, and `GetAll(mask []byte)` that returns all entries containing specified mask. See example below.
+4. You can build some http router using this Trie. For this purpose I added `SubTrie(mask []byte)` method that returns 
+   sub trie with all entries, prefixed by specified mask, and `GetAll(mask []byte)` that returns all entries containing 
+   specified mask. See example below.
 
-Also, this implementation supports zero-length prefix (`[]byte{}` or `nil`). Value associated with this prefix can be used as fallback when no other entries found. Or it can serve as universal prefix for all entries.
+Also, this implementation supports zero-length prefix (`[]byte{}` or `nil`). Value associated with this prefix can be 
+used as fallback when no other entries found. Or it can serve as universal prefix for all entries.
 
-Limitation: `nil` can't be stored as value, because node containing nil value considered empty.
+Note: Trie stores pointers to values inside, but if your values are really large (structures or arrays) - consider 
+using pointers as type parameter: Trie[*MyStruct]. It will prevent copying of large structures when getting result of Get. 
 
 ## Examples
 
@@ -51,7 +65,7 @@ import (
 //    prefixes.PutString("three", 3)
 //    prefixes.PutString("", 0)
 //
-var prefixes = trie.BuildFromMap(map[string]interface{}{
+var prefixes = trie.BuildFromMap[int](map[string]interface{}{
     "one":   1,
     "two":   2,
     "three": 3,
