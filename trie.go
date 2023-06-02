@@ -19,9 +19,6 @@ func (t *Trie[T]) PutString(prefix string, value T) {
 // Put adds new entry into trie or replaces existing with specified prefix.
 // Prefix can have zero length - associated value would be added into root Trie
 //
-// WARNING! nil shouldn't be stored as value: you wouldn't be able to find it nor by SearchPrefixIn, nor by Get, nor by Iterate
-// If you don't need any value (you need only prefixes) - you can use struct{}{}. See TakePrefix
-//
 // There were some variants of control of replace. Handling it in place results in dependency on ValueType
 // (interfaces and pointers are handled differently). Also there are some incomparable types, that cause panic when compared :(.
 // Store separate function like OnReplaceCallback - requires passing it to children. And if you update it in parent -
